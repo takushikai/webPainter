@@ -1,3 +1,5 @@
+javascript:(function(){
+//build:2021.5.17.0:49:8
 //2021_05_08 by T.Kai
 
 //issues
@@ -14,6 +16,7 @@
  *  
  */
 
+// console.log("KTJ Web Draw  ver 0.8 (Beta) is running!");
 
 EventTarget.prototype.$addEventListener = function (str,func){
     let arr = str.split(" ");
@@ -424,3 +427,230 @@ trashBox.$addEventListener("mouseup touchend", ()=>{
 document.onselectstart = () => {
     return false;
 };
+//undo,redo
+// スタックしておく最大回数。キャンバスの大きさの都合などに合わせて調整したら良いです。
+//const STACK_MAX_SIZE = 5;
+// スタックデータ保存用の配列
+let undoDataStack = [];
+let redoDataStack = [];
+
+// canvasへの描画処理を行う前に行う処理
+function recordCanvas() {
+    // やり直し用スタックの中身を削除
+    redoDataStack = [];
+    // 元に戻す用の配列が最大保持数より大きくなっているかどうか
+    // if (undoDataStack.length >= STACK_MAX_SIZE) {
+    //     // 条件に該当する場合末尾の要素を削除
+    //     undoDataStack.pop();
+    // }
+    // 元に戻す配列の先頭にcontextのImageDataを保持する
+    undoDataStack.unshift(canvas.toDataURL());
+}
+
+
+function undo () {
+    // 戻す配列にスタックしているデータがなければ処理を終了する
+    if (undoDataStack.length <= 0) return;
+    // やり直し用の配列に元に戻す操作をする前のCanvasの状態をスタックしておく
+    const nowImg = canvas.toDataURL();
+    redoDataStack.unshift(nowImg);
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    // 元に戻す配列の先頭からイメージデータを取得して
+    var imageData = new Image();
+    imageData.src = undoDataStack.shift();
+    // 描画する
+    imageData.onload = function(){
+    context.drawImage(imageData, 0, 0);
+    }
+}
+
+function redo () {
+    // やり直し用配列にスタックしているデータがなければ処理を終了する
+    if (redoDataStack.length <= 0) return;
+    // 元に戻す用の配列にやり直し操作をする前のCanvasの状態をスタックしておく
+    undoDataStack.unshift(canvas.toDataURL());
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    // やり直す配列の先頭からイメージデータを取得して
+    var imageData = new Image();
+    imageData.src = redoDataStack.shift();
+    // 描画する
+    imageData.onload = ()=>{
+    context.drawImage(imageData, 0, 0,canvas.width,canvas.height,0,0,canvas.width,canvas.height);
+    }
+}
+
+undo_button.$addEventListener("mousedown touchstart",()=>{
+    undo();
+    undo_button.style.backgroundColor = "#3876ff";
+});
+undo_button.$addEventListener("mouseup touchend",()=>{
+    undo_button.style.backgroundColor = "#ffffff";
+})
+redo_button.$addEventListener("mousedown touchstart",()=>{
+    redo();
+    redo_button.style.backgroundColor = "#3876ff";
+});
+redo_button.$addEventListener("mouseup touchend",()=>{
+    redo_button.style.backgroundColor = "#ffffff";
+});//バニシング設定
+let vanishing = false;
+function setVanishing(bool) {
+    erase(false);//消しゴム無効
+    canvas.addEventListener("touchmove", touchScrollOK, false );//逆はremoveEventListener
+    
+    if (bool == false) {
+        pencil.style.backgroundColor = "#ffffff";
+        vanishing = false;
+    }
+
+    else {
+        pencil.style.backgroundColor = "#3876ff";
+        vanishing = true;
+    }
+};
+
+//バニシングオンオフ
+pencil.addEventListener("click", ()=>{
+    if(vanishing==true){
+        setVanishing(false);
+    }
+    else{
+        setVanishing(true);
+    }
+    
+});
+
+// 直前のマウスのcanvas上のx座標とy座標を記録する
+let lastPosition = { x: null, y: null };
+
+// マウスがドラッグされているか(クリックされたままか)判断するためのフラグ
+let isDrag = false;
+
+//描画終了
+function dragEnd(event) {
+    // 線を書く処理の終了を宣言する
+    context.closePath();
+    isDrag = false;
+
+    // 描画中に記録していた値をリセットする
+    lastPosition.x = null;
+    lastPosition.y = null;
+
+    if(vanishing==false){
+        return;
+    }
+    else{
+        // setTimeout(()=>{
+        //     undo();
+        // }, vanishingTime*1000);
+    }
+};
+
+
+//canvasマウスダウン時描画スタート
+canvas.$addEventListener("mousedown touchstart", (event) => {
+    // if( vanishing==true ){
+        console.log("on");
+        recordCanvas();
+        lastPosition.x = event.pageX;
+        lastPosition.y = event.pageY;
+        context.beginPath();
+        isDrag = true;
+    // }
+});
+
+canvas.$addEventListener("mouseup touchend", dragEnd);
+
+// canvas.addEventListener("mouseout", dragEnd);//ここはマウスアウト時
+
+
+canvas.$addEventListener("mousemove touchmove",(e)=>{
+    if(!isDrag) {
+        return;
+    }
+
+    let x,y;
+    if(e.type=="mousemove"){
+        x = e.pageX;
+        y = e.pageY;
+    }
+    else if(e.type=="touchmove"){
+        x = e.changedTouches[0].pageX;
+        y = e.changedTouches[0].pageY;
+    }
+
+    
+    if(eraserFlg == true){//消しゴムが有効であればペンは実行されない
+        // context.clearRect(x,y,lineWidth,lineWidth);
+        context.strokeStyle = "#ffffff";
+    }
+    else{
+        context.strokeStyle = lineColor; // 線の色
+    }
+
+    // else{
+
+    // 線の状態を定義する
+    context.lineCap = "round"; // 丸みを帯びた線にする
+    context.lineJoin = "round"; // 丸みを帯びた線にする
+    context.lineWidth = lineWidth; // 線の太さ
+
+    // 「context.beginPath()」と「context.closePath()」を都度draw関数内で実行するよりも、
+    // 線の描き始め(dragStart関数)と線の描き終わり(dragEnd)で1回ずつ読んだほうがより綺麗に線画書ける
+
+    // 書き始めは lastPosition.x, lastPosition.y の値はnullとなっているため、
+    // クリックしたところを開始点としている。
+    // この関数(draw関数内)の最後の2行で lastPosition.xとlastPosition.yに
+    // 現在のx, y座標を記録することで、次にマウスを動かした時に、
+    // 前回の位置から現在のマウスの位置まで線を引くようになる。
+    if (lastPosition.x === null || lastPosition.y === null) {
+        // ドラッグ開始時の線の開始位置
+        context.moveTo(x, y);
+    } else {
+        // ドラッグ中の線の開始位置
+        context.moveTo(lastPosition.x, lastPosition.y);
+    }
+    // context.moveToで設定した位置から、context.lineToで設定した位置までの線を引く。
+    // - 開始時はmoveToとlineToの値が同じであるためただの点となる。
+    // - ドラッグ中はlastPosition変数で前回のマウス位置を記録しているため、
+    //   前回の位置から現在の位置までの線(点のつながり)となる
+    context.lineTo(x, y);
+
+    // context.moveTo, context.lineToの値を元に実際に線を引く
+    context.stroke();
+
+    // 現在のマウス位置を記録して、次回線を書くときの開始点に使う
+    lastPosition.x = x;
+    lastPosition.y = y;
+    // }
+});
+
+
+//消しゴム
+let eraserFlg = false;
+// let nowColor;//不要？
+
+function erase(bool){
+    if(bool == false){
+        eraser.style.backgroundColor = "#ffffff";
+        // lineColor = nowColor;
+        eraserFlg = false;
+    }
+    else{
+        eraser.style.backgroundColor = "#3876ff";
+        // nowColor = lineColor;
+        eraserFlg = true;
+    }
+};
+
+eraser.addEventListener("click", ()=>{
+    if(eraserFlg==true){
+        erase(false);
+    }
+    else{
+        erase(true);
+    }
+    
+});
+
+})();

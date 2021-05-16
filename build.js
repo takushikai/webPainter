@@ -1,17 +1,17 @@
 const fs = require("fs");
-const main = require("./src/main","utf-8");
-const undoredo = require("./src/undoredo","utf-8");
-const core = require("./src/core","utf-8");
+const main = fs.readFileSync("./src/main.js","utf-8");
+const undoredo = fs.readFileSync("./src/undoredo.js","utf-8");
+const core = fs.readFileSync("./src/core.js","utf-8");
 
 
-var dt = new Date();
-
+const dt = new Date();
+const month = dt.getMonth()+1;
 const date = 
     dt.getFullYear()+"."
-    +dt.getMonth()+1+"."
+    +month+"."
     +dt.getDate()+"."
-    +dt.getHours()+"."
-    +dt.getMinutes()+"."
+    +dt.getHours()+":"
+    +dt.getMinutes()+":"
     +dt.getSeconds();
 
 
@@ -25,3 +25,8 @@ const text =
     +core
     +"\n})();"
 
+
+fs.writeFileSync("./build/webPainter.js",text,(err)=>{
+    if(err) throw err;
+});
+console.log(date+"\nwebPainter.jsをビルドしました。")
