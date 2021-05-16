@@ -10,3 +10,4 @@
 git clone https://github.com/takushikai/webPainter/edit/master
 
 node build.js
+webPainter/build/に webPainter.js が作成されます。
